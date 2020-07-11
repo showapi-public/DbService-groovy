@@ -2,6 +2,7 @@ package service
 
 import com.alibaba.fastjson.JSONObject
 import com.mongodb.MongoClient
+import com.mongodb.MongoClientOptions
 import com.mongodb.MongoCredential
 import com.mongodb.ServerAddress
 import com.mongodb.client.MongoCollection
@@ -9,8 +10,8 @@ import com.mongodb.client.model.FindOneAndReplaceOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import org.bson.Document
 import org.bson.types.ObjectId
+
 import java.text.SimpleDateFormat
-import java.util.concurrent.atomic.AtomicLong
 
 /**********mongodb操作***********/
 /*
@@ -39,11 +40,11 @@ import java.util.concurrent.atomic.AtomicLong
  */
 
 class DbService {
-    static AtomicLong cnt = new AtomicLong(0);
     //以下为数据库连接配置,可以考虑用spring注入参数
     def mongoClient
     def dataBaseName
     def db
+    def dbVersion = "4.0.19";//mongo版本号 默认4.0
 
     /*
 	 *  根据构造函数来建立
@@ -53,9 +54,13 @@ class DbService {
 	 *  dbName  		must	数据库名
 	 *  mongoUser  		must	登录名
 	 *  mongoUserPwd  	must	登录密码
-	 *  timeout		option
-	 *  maxPoolSize		option
-	 *  replicaSet		option
+	 *  connectTimeout  option  default 60000 60秒 连接超时时间
+	 *  socketTimeout   option  default 60000 60秒 数据读取超时时间
+	 *  maxPoolSize		option  default 800
+	 *  minPoolSize		option  default 50
+	 *  authSource		option  用户名密码效验的库名
+	 *  maxWaitTime     option 等待连接阻塞时间 1秒
+	 *  version         option 当前使用的数据库的版本号
 	 */
 //    连接配置说明:
 //    http://mongodb.github.io/mongo-java-driver/4.0/apidocs/mongodb-driver-core/com/mongodb/ConnectionString.html
@@ -66,10 +71,65 @@ class DbService {
         if(params.authSource) {
             sourceDb = params.authSource;
         }
+        int connectTimeout =  60000;
+        if(params.connectTimeout) {
+            connectTimeout = params.connectTimeout.toString().toInteger();
+        }
 
-        this.mongoClient = new MongoClient(new ServerAddress(params.ip,params.port.toString().toInteger()),
-                Arrays.asList(MongoCredential.createCredential(params.mongoUser, sourceDb, params.mongoUserPwd.toCharArray())));
-        this.db = mongoClient.getDatabase(dataBaseName);
+        int socketTimeout =  60000;
+        if(params.socketTimeout) {
+            socketTimeout = params.socketTimeout.toString().toInteger();
+        }
+
+        int maxPoolSize =  500;
+        if(params.maxPoolSize) {
+            maxPoolSize = params.maxPoolSize.toString().toInteger();
+        }
+        int minPoolSize =  50;
+        if(params.minPoolSize) {
+            minPoolSize = params.minPoolSize.toString().toInteger();
+        }
+
+        int maxWaitTime = 1000;
+        if(params.maxWaitTime) {
+            maxWaitTime = params.maxWaitTime.toString().toInteger();
+        }
+        String version = ""
+        if(params.version) {
+            version = params.version.toString();
+        }
+        MongoClientOptions.Builder builder = MongoClientOptions.builder();
+        builder.maxWaitTime(maxWaitTime)  //最大等待连接的线程阻塞时间 毫秒
+        .minConnectionsPerHost(minPoolSize) //最小连接数
+                .connectionsPerHost(maxPoolSize) //最大连接数
+//              .threadsAllowedToBlockForConnectionMultiplier(10) //线程队列数，它与connectionsPerHost值相乘的结果就是线程队列最大值
+//              .threadsAllowedToBlockForConnectionMultiplier(5) //超过此值乘以connectionsPerHost,将返回异常
+//              .socketKeepAlive(false) //设置keepalive,默认值是false
+                .connectTimeout(connectTimeout) //连接超时时间
+                .socketTimeout(socketTimeout); //socket超时
+
+        String ip = "localhost"
+        int port = 27017
+        if(params.ip){
+            ip = params.ip.toString();
+        }
+        if(params.port){
+            port = params.port.toString().toInteger();
+        }
+        /*
+        需要效验所有参数的合法性
+        此处暂省略...
+         */
+        MongoClientOptions clientOptions = builder.build();
+        this.mongoClient = new MongoClient(new ServerAddress(ip,port),
+                Arrays.asList(MongoCredential.createCredential(params.mongoUser, sourceDb, params.mongoUserPwd.toCharArray())),clientOptions);
+        this.db = this.mongoClient.getDatabase(dataBaseName);
+        if(!version){
+            version = db.runCommand(new Document("buildInfo",1)).get("version")
+        }
+        if(version){
+            this.dbVersion = version.trim()
+        }
     }
 
     def methodMissing(String name, args) {
@@ -85,11 +145,7 @@ class DbService {
                 condition.each {
                     Document d = it
                     if (!d["_id"]) {//id
-                        int counter = cnt.getAndIncrement().toInteger();
-                        if(counter>16000000) {//重置计数器 counter的最大值16,777,216
-                            reset_counter()
-                        }
-                        d["_id"] = new ObjectId(new Date(),counter).toHexString();
+                        d["_id"] = new ObjectId().toHexString();
                     }
                 }
                 innerGetColl(name,7).insertMany(condition)
@@ -107,11 +163,7 @@ class DbService {
                 condition.ct = dateformat.format(now);
             }
             if (!condition["_id"]) {//id
-                int counter = cnt.getAndIncrement().toInteger();
-                if(counter>16000000) {//重置计数器 counter的最大值16,777,216
-                    reset_counter()
-                }
-                condition["_id"] = new ObjectId(now,counter).toHexString();
+                condition["_id"] = new ObjectId().toHexString();
             }
             args[0]["_id"] = condition["_id"] //相当于把保存后的主键id返回
             args[0]["ct"] = condition["ct"] //相当于把保存后的ct返回
@@ -130,9 +182,9 @@ class DbService {
             if(args){
                 query = args[0]==null?[:]:mapToBson(args[0])
             }
-            def modify = args[1]
+//            def modify = args[1]
             def noSet = [:]//map中的key值不受到$set影响
-            modify = innerTranslateMap(modify, noSet)
+            def modify = innerTranslateMap(args[1], noSet)
             //使用set修改器
             def tmpId = modify._id
             modify.remove("_id") //不要_id
@@ -157,12 +209,11 @@ class DbService {
             if(args){
                 query = args[0]==null?[:]:mapToBson(args[0])
             }
-            def modify = args[1]
 //			println query
 //			println modify
             def objBack = args[1] //为了存储_id
             def noSet = [:]//map中的key值不受到$set影响
-            modify = innerTranslateMap(modify, noSet)
+            def modify = innerTranslateMap(args[1], noSet)
             //使用set修改器
             def tmpId = modify._id
             modify.remove("_id") //不要_id
@@ -213,8 +264,7 @@ class DbService {
                 query = args[0]==null?[:]:mapToBson(args[0])
             }
             def noSet = [:]//map中的key值不受到$set影响
-            def modify = args[1]
-            modify = innerTranslateMap(modify, noSet)
+            def modify = innerTranslateMap(args[1], noSet)
             def tmpId = modify._id
             modify.remove("_id") //不要_id
 
@@ -270,8 +320,9 @@ class DbService {
             def coll = innerGetColl(name, 9)
             def query = [:]
             if(args){
-                query = args[0]==null?[:]:mapToBson(args[0])
+                query = args[0]==null?[:]:args[0]
             }
+            query = mapToBson(query)
             def ret =  coll.count(query)
 //            def ret =  coll.countDocuments(query) //3.12以上驱动版本用
             return ret
@@ -323,8 +374,11 @@ class DbService {
             def maxResult = 20;
             def extParams = [:]
             boolean countFlag = true;
+            if(!this.dbVersion.startsWith("2")){
+                countFlag = false
+            }
 
-            if(args[1] instanceof Map && args.size()>1){
+            if(args.size()>1 && args[1] instanceof Map ){
                 extParams = args[1]
 
                 if(args[2]){
@@ -333,7 +387,7 @@ class DbService {
                 if(args[3]){
                     maxResult = args[3].toInteger()
                 }
-                if (args[4] instanceof Boolean) {
+                if (args[4] && (args[4] instanceof Boolean)) {
                     countFlag = args[4].toBoolean()
                 }
 
@@ -344,14 +398,18 @@ class DbService {
                 if(args[2]){
                     maxResult = args[2].toInteger()
                 }
-                if(args[3]  instanceof Boolean ){
+                if (args[3] && (args[3] instanceof Boolean)) {
                     countFlag = args[3].toBoolean()
                 }
             }
             def ret = innerSearchRecord(coll,query, page, maxResult, countFlag, normalCallBack, extParams)
             return ret
         } else if (name.startsWith("del")) {
-            def query = mapToBson(args[0])
+            def q = [:]
+            if(args[0] instanceof Map){
+                q = args[0]
+            }
+            def query = mapToBson(q)
             try {
                 innerGetColl(name, 3).deleteMany(query)
 
@@ -384,7 +442,6 @@ class DbService {
             if (ret?.size() > 0) {
                 def result = ret.iterator().next();
                 result.remove("_id")//不要id
-
                 return result
             } else {
 
@@ -410,12 +467,6 @@ class DbService {
         return "unknown method $name(${args.join(',')})"
     }
 
-    def synchronized static void reset_counter() {
-        if(cnt.get()>16000000) {
-            cnt.set(0l);
-        }
-    }
-
     /**********查询操作***********/
     /*
      * query  查询条件, 为一个BasicDBObject
@@ -423,7 +474,7 @@ class DbService {
      * 返回PageBean结构的map
      * callBack(cur.next())
      */
-    def innerSearchRecord = { coll, query = [:], page = 1, maxResult = 20, getCount = true, callBack = null, extParams = null ->
+    def innerSearchRecord = { coll, query = [:], page = 1, maxResult = 20, getCount = false, callBack = null, extParams = null ->
         if (!page) {//为什么要这么写一次，是因为传进来的参数可能是null,这样默认值就不起作用了
             page = 1
         }
@@ -433,7 +484,7 @@ class DbService {
         if (getCount instanceof Boolean) {
             getCount = getCount
         }else {
-            getCount = true;
+            getCount = false;
         }
         def sortMap
         if (query.sort) {
@@ -533,7 +584,7 @@ class DbService {
                 map."${key}" = modify."${key}"
             }
         }
-        modify.clear()
+//        modify.clear()
         return map
     }
 
@@ -543,7 +594,7 @@ class DbService {
         def first = collName.substring(0, 1).toLowerCase()
         collName = first + collName.substring(1) //取得collName
 //        MongoCollection coll = this.db.getCollection(collName);
-        MongoCollection coll = this.mongoClient.getDatabase(this.dataBaseName).getCollection(collName);
+        MongoCollection coll = this.db.getCollection(collName);
 //		coll.countDocuments()
         return coll
     }
@@ -586,6 +637,7 @@ class DbService {
 //
 //        return flag
 //    }
+
 
 
 }
