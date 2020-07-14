@@ -81,11 +81,11 @@ class DbService {
             socketTimeout = params.socketTimeout.toString().toInteger();
         }
 
-        int maxPoolSize =  500;
+        int maxPoolSize =  200;
         if(params.maxPoolSize) {
             maxPoolSize = params.maxPoolSize.toString().toInteger();
         }
-        int minPoolSize =  50;
+        int minPoolSize =  20;
         if(params.minPoolSize) {
             minPoolSize = params.minPoolSize.toString().toInteger();
         }
