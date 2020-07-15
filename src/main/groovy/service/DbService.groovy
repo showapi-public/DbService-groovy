@@ -8,6 +8,7 @@ import com.mongodb.ServerAddress
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.FindOneAndReplaceOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.IndexOptions
 import org.bson.Document
 import org.bson.types.ObjectId
 
@@ -463,7 +464,32 @@ class DbService {
 
                 return [:]
             }
+        }else if(name.startsWith("createIndex")){
+            def coll = innerGetColl(name, 11)
+            def q = [:]
+            if(args[0] instanceof Map){
+                q = args[0]
+            }
+            if(q){
+                def index_info = mapToBson(q)
+                IndexOptions opt = new IndexOptions()
+                opt.background(true);
+                return coll.createIndex(index_info,opt)
+            }else {
+                return null
+            }
+        }else if(name.startsWith("dropIndex")){
+            def coll = innerGetColl(name, 9)
+            if(args[0] instanceof Map){
+                coll.dropIndex(mapToBson(args[0]))
+                return true
+            }else if(args[0] instanceof String){
+                coll.dropIndex(args[0].toString().trim())
+                return true
+            }
+            return false
         }
+
         return "unknown method $name(${args.join(',')})"
     }
 
