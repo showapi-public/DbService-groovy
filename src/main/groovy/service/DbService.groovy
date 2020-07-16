@@ -9,10 +9,12 @@ import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.FindOneAndReplaceOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexOptions
+import com.mongodb.util.JSON
 import org.bson.Document
 import org.bson.types.ObjectId
 
 import java.text.SimpleDateFormat
+import java.util.concurrent.TimeUnit
 
 /**********mongodb操作***********/
 /*
@@ -89,6 +91,10 @@ class DbService {
         int minPoolSize =  20;
         if(params.minPoolSize) {
             minPoolSize = params.minPoolSize.toString().toInteger();
+        }
+
+        if(maxPoolSize<minPoolSize){
+            maxPoolSize = maxPoolSize;
         }
 
         int maxWaitTime = 1000;
@@ -308,7 +314,7 @@ class DbService {
             def extPara = null
             if(args){
                 query = args[0]==null?[:]:mapToBson(args[0])
-                extPara = args.size() == 2 ? args[1] : null
+                extPara = args.length == 2 ? args[1] : null
             }
 
             def pagebean = innerSearchRecord(coll, query, 1, 1, false, normalCallBack, extPara)
@@ -379,7 +385,7 @@ class DbService {
                 countFlag = false
             }
 
-            if(args.size()>1 && args[1] instanceof Map ){
+            if(args.length>1 && args[1] instanceof Map ){
                 extParams = args[1]
 
                 if(args[2]){
@@ -452,13 +458,12 @@ class DbService {
             def coll = innerGetColl(name, 9)
             def pipelineList = []
             args[0].split("@@@").each {
-                pipelineList << mapToBson(JSONObject.parse(it))
+                pipelineList << mapToBson(JSON.parse(it))
             }
             def ret = coll.aggregate(pipelineList);
             if (ret?.size() > 0) {
                 def result = ret.iterator().next();
                 result.remove("_id")//不要id
-
                 return result
             } else {
 
@@ -474,6 +479,18 @@ class DbService {
                 def index_info = mapToBson(q)
                 IndexOptions opt = new IndexOptions()
                 opt.background(true);
+                if(args.length>1 && args[1] && (args[1] instanceof Map)){
+                    def options = args[1]
+                    if(options.expire && (options.expire instanceof Integer)){
+                        opt.expireAfter(options.expire, TimeUnit.SECONDS)
+                    }
+                    if(options.unique && (options.expire instanceof Boolean)){
+                        opt.unique(options.unique)
+                    }
+                    if(options.background && (options.background instanceof Boolean)){
+                        opt.background(options.background)
+                    }
+                }
                 return coll.createIndex(index_info,opt)
             }else {
                 return null
@@ -663,6 +680,7 @@ class DbService {
 //
 //        return flag
 //    }
+
 
 
 
