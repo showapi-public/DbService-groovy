@@ -346,7 +346,8 @@ class DbService {
             pipelineList << mapToBson(["\$project": project])
             pipelineList << mapToBson(["\$group": group])
 //			def ret= coll.aggregate(*pipelineList);
-            def ret = coll.aggregate(pipelineList);
+            def ret = []
+            coll.aggregate(pipelineList).into(ret);
 
             if (ret?.size() > 0) {
                 def result = ret.iterator().next();
@@ -455,20 +456,20 @@ class DbService {
                 return [:]
             }
         } else if (name.startsWith("aggregate")) { //使用字符串来聚合
+            println name
             def coll = innerGetColl(name, 9)
             def pipelineList = []
             args[0].split("@@@").each {
                 pipelineList << mapToBson(JSON.parse(it))
             }
-            def ret = coll.aggregate(pipelineList);
-            if (ret?.size() > 0) {
-                def result = ret.iterator().next();
-                result.remove("_id")//不要id
-                return result
-            } else {
+            def ret = []
+            coll.aggregate(pipelineList).into(ret);
 
-                return [:]
+            if (ret?.size() > 0) {
+                return ret;
             }
+            return null
+
         }else if(name.startsWith("createIndex")){
             def coll = innerGetColl(name, 11)
             def q = [:]
@@ -680,7 +681,6 @@ class DbService {
 //
 //        return flag
 //    }
-
 
 
 
