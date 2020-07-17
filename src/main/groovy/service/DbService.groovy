@@ -248,7 +248,7 @@ class DbService {
                 query = args[1]==null?[:]:args[1]
             }
             def result_class = String//返回的数据类型,如:String
-            if (args.length >= 3) {
+            if (args.size() >= 3) {
                 result_class = args[2]
             }
             def list = []
@@ -281,7 +281,7 @@ class DbService {
             modify = mapToBson(all)
 
             def sort = [_id: 1]
-            if(args.length>2){
+            if(args.size()>2){
                 sort = args[2]
             }
 
@@ -299,7 +299,7 @@ class DbService {
             }
             def replace_data = mapToBson(args[1])
             def sort = [_id:-1]
-            if(args.length>2){
+            if(args.size()>2){
                 sort = args[2]
             }
             sort =  mapToBson(args[2])
@@ -314,7 +314,7 @@ class DbService {
             def extPara = null
             if(args){
                 query = args[0]==null?[:]:mapToBson(args[0])
-                extPara = args.length == 2 ? args[1] : null
+                extPara = args.size() == 2 ? args[1] : null
             }
 
             def pagebean = innerSearchRecord(coll, query, 1, 1, false, normalCallBack, extPara)
@@ -334,7 +334,7 @@ class DbService {
 //            def ret =  coll.countDocuments(query) //3.12以上驱动版本用
             return ret
         } else if (name.startsWith("findSum")) {
-            if (args.length != 2) return null
+            if (args.size() != 2) return null
             def coll = innerGetColl(name, 7)
             def project = [:], group = [_id: 1]
             args[1].each {
@@ -386,7 +386,7 @@ class DbService {
                 countFlag = false
             }
 
-            if(args.length>1 && args[1] instanceof Map ){
+            if(args.size()>1 && args[1] instanceof Map ){
                 extParams = args[1]
 
                 if(args[2]){
@@ -446,13 +446,11 @@ class DbService {
             args[0].each {
                 pipelineList << mapToBson(it)
             }
-            def ret = coll.aggregate(pipelineList);
+            def ret = []
+            coll.aggregate(pipelineList).into(ret);
             if (ret?.size() > 0) {
-                def result = ret.iterator().next();
-                result.remove("_id")//不要id
-                return result
+                return ret
             } else {
-
                 return [:]
             }
         } else if (name.startsWith("aggregate")) { //使用字符串来聚合
@@ -480,7 +478,7 @@ class DbService {
                 def index_info = mapToBson(q)
                 IndexOptions opt = new IndexOptions()
                 opt.background(true);
-                if(args.length>1 && args[1] && (args[1] instanceof Map)){
+                if(args.size()>1 && args[1] && (args[1] instanceof Map)){
                     def options = args[1]
                     if(options.expire && (options.expire instanceof Integer)){
                         opt.expireAfter(options.expire, TimeUnit.SECONDS)
@@ -681,6 +679,7 @@ class DbService {
 //
 //        return flag
 //    }
+
 
 
 
