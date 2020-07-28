@@ -347,7 +347,7 @@ class DbService {
             coll.aggregate(pipelineList).into(ret);
 
             if (ret?.size() > 0) {
-                def result = ret.iterator().next();
+                def result = ret[0];
                 result.remove("_id")//不要id
                 return result
             } else {
@@ -446,10 +446,12 @@ class DbService {
             def ret = []
             coll.aggregate(pipelineList).into(ret);
             if (ret?.size() > 0) {
+                if(this.dbVersion.startsWith("2")){
+                    return new ShowApiAggregateData(ret)
+                }
                 return ret
-            } else {
-                return [:]
             }
+            return null
         } else if (name.startsWith("aggregate")) { //使用字符串来聚合
             println name
             def coll = innerGetColl(name, 9)
@@ -459,12 +461,13 @@ class DbService {
             }
             def ret = []
             coll.aggregate(pipelineList).into(ret);
-
             if (ret?.size() > 0) {
-                return ret;
+                if(this.dbVersion.startsWith("2")){
+                    return new ShowApiAggregateData(ret)
+                }
+                return ret
             }
-            return null
-
+            return null;
         }else if(name.startsWith("createIndex")){
             def coll = innerGetColl(name, 11)
             def q = [:]
@@ -678,6 +681,25 @@ class DbService {
 //
 //        return flag
 //    }
+
+    class ShowApiAggregateData{//兼容mongodb2.x老驱动,构造新的对象
+        def result=[]
+        def commandResult
+        public ShowApiAggregateData(def data){
+            this.commandResult = new InnerCommandResult(data);
+        }
+        def getCommandResult(){
+            return this.commandResult
+        }
+        class InnerCommandResult{
+            def result = []
+            public InnerCommandResult(def data){
+                if(data instanceof Collection){
+                    this.result = data;
+                }
+            }
+        }
+    }
 
 
 }
