@@ -177,12 +177,11 @@ class DbService {
             condition = mapToBson(args[0])
             try{
                 innerGetColl(name, 4).insertOne(condition)
-
             }catch(e){
                 e.printStackTrace();
                 throw e;
-                return  [:]            }
-
+                return  [:]
+            }
             return args[0]
         }else if (name.startsWith("updateAll")) {
             def query = [:]
@@ -201,7 +200,6 @@ class DbService {
             modify = mapToBson(all)
             try {
                 innerGetColl(name, 9).updateMany(query, modify)
-
             } catch (e) {
                 e.printStackTrace();
                 throw e;
@@ -231,7 +229,6 @@ class DbService {
             modify = mapToBson(all)
             try {
                 innerGetColl(name, 6).updateOne(query, modify)//最后两个参数是upset和multiLine
-
             } catch (e) {
                 e.printStackTrace();
                 throw e;
@@ -331,7 +328,7 @@ class DbService {
             }
             query = mapToBson(query)
             def ret =  coll.count(query)
-//            def ret =  coll.countDocuments(query) //3.12以上驱动版本用
+//            def ret =  coll.countDocuments(query) //新版mongo驱动中使用
             return ret
         } else if (name.startsWith("findSum")) {
             if (args.size() != 2) return null
@@ -435,7 +432,7 @@ class DbService {
 
             return ret
         } else if (name.startsWith("dropTable")) {
-            args = args as List
+//            args = args as List
             def coll = innerGetColl(name, 9)
             def ret = coll.drop()
 
@@ -608,6 +605,8 @@ class DbService {
                 list << condition
             }
             return list
+        } else if (obj instanceof GString){
+            return obj.toString()
         } else {
             return obj
         }
@@ -679,8 +678,6 @@ class DbService {
 //
 //        return flag
 //    }
-
-
 
 
 }
