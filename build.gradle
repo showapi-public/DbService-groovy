@@ -6,11 +6,16 @@ group 'com.showapi.mongo'
 version '1.0-SNAPSHOT'
 
 repositories {
-    mavenCentral()
+//    mavenCentral()
+    maven{ url 'https://maven.aliyun.com/nexus/content/groups/public/'}
 }
 
 dependencies {
-    compile 'org.codehaus.groovy:groovy-all:2.4.19'
+//    compile 'org.codehaus.groovy:groovy-all:2.4.19'
+    //compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.0.8'
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '1.7.8'
+//    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.5.13', ext: 'pom'
+    //compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '3.0.5', ext: 'pom'
     compile group: 'com.alibaba', name: 'fastjson', version: '1.2.72'
 
     //驱动版本mongo-java-driver_3.0~3.4。
