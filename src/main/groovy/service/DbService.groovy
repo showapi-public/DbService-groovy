@@ -443,15 +443,14 @@ class DbService {
             args[0].each {
                 pipelineList << mapToBson(it)
             }
-            def ret = []
+
+            def ret = null
             coll.aggregate(pipelineList).into(ret);
-            if (ret?.size() > 0) {
-                if(this.dbVersion.startsWith("2")){
-                    return new ShowApiAggregateData(ret)
-                }
-                return ret
+            if(ret && this.dbVersion.startsWith("2")){
+                return new ShowApiAggregateData(ret)
             }
-            return null
+            return ret
+
         } else if (name.startsWith("aggregate")) { //使用字符串来聚合
             println name
             def coll = innerGetColl(name, 9)
@@ -459,15 +458,13 @@ class DbService {
             args[0].split("@@@").each {
                 pipelineList << mapToBson(JSON.parse(it))
             }
-            def ret = []
+            def ret = null
             coll.aggregate(pipelineList).into(ret);
-            if (ret?.size() > 0) {
-                if(this.dbVersion.startsWith("2")){
-                    return new ShowApiAggregateData(ret)
-                }
-                return ret
+            if(ret && this.dbVersion.startsWith("2")){
+                return new ShowApiAggregateData(ret)
             }
-            return null;
+            return ret
+
         }else if(name.startsWith("createIndex")){
             def coll = innerGetColl(name, 11)
             def q = [:]
