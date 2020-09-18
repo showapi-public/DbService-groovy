@@ -501,6 +501,18 @@ class DbService {
                 return true
             }
             return false
+        }else if(name.startsWith("runCommand")){
+            if(!args[0] || !(args[0] instanceof Map)){
+                return false
+            }
+            def ret = this.db.runCommand(mapToBson(args[0]));
+            if(!ret){
+                return true
+            }
+            if(ret instanceof String || ret instanceof Number){
+                return ret
+            }
+            return JSONObject.toJSONString(ret);
         }
 
         return "unknown method $name(${args.join(',')})"
@@ -697,7 +709,5 @@ class DbService {
             }
         }
     }
-
-
 
 }
