@@ -94,7 +94,7 @@ class DbService {
         }
 
         if(maxPoolSize<minPoolSize){
-            maxPoolSize = maxPoolSize;
+            maxPoolSize = minPoolSize;
         }
 
         int maxWaitTime = 1000;
@@ -110,7 +110,7 @@ class DbService {
         .minConnectionsPerHost(minPoolSize) //最小连接数
                 .connectionsPerHost(maxPoolSize) //最大连接数
 //              .threadsAllowedToBlockForConnectionMultiplier(10) //线程队列数，它与connectionsPerHost值相乘的结果就是线程队列最大值
-//              .threadsAllowedToBlockForConnectionMultiplier(5) //超过此值乘以connectionsPerHost,将返回异常
+              .threadsAllowedToBlockForConnectionMultiplier(10) //超过此值乘以connectionsPerHost,将返回异常
 //              .socketKeepAlive(false) //设置keepalive,默认值是false
                 .connectTimeout(connectTimeout) //连接超时时间
                 .socketTimeout(socketTimeout); //socket超时
@@ -709,5 +709,8 @@ class DbService {
             }
         }
     }
+
+
+
 
 }
