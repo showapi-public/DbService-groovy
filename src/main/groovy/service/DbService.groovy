@@ -444,7 +444,7 @@ class DbService {
                 pipelineList << mapToBson(it)
             }
 
-            def ret = null
+            def ret = []
             coll.aggregate(pipelineList).into(ret);
             if(ret && this.dbVersion.startsWith("2")){
                 return new ShowApiAggregateData(ret)
@@ -458,7 +458,7 @@ class DbService {
             args[0].split("@@@").each {
                 pipelineList << mapToBson(JSON.parse(it))
             }
-            def ret = null
+            def ret = []
             coll.aggregate(pipelineList).into(ret);
             if(ret && this.dbVersion.startsWith("2")){
                 return new ShowApiAggregateData(ret)
@@ -709,8 +709,6 @@ class DbService {
             }
         }
     }
-
-
 
 
 }
