@@ -101,16 +101,22 @@ class DbService {
         if(params.maxWaitTime) {
             maxWaitTime = params.maxWaitTime.toString().toInteger();
         }
+
+        int blockQueueNum = 5; //排队的线程队列数,当等待的线程数大于maxPoolSize*blockQueueNum时,则报错
+        if(params.blockQueueNum) {
+            blockQueueNum = params.blockQueueNum.toString().toInteger();
+        }
+
         String version = ""
         if(params.version) {
             version = params.version.toString();
         }
         MongoClientOptions.Builder builder = MongoClientOptions.builder();
-        builder.maxWaitTime(maxWaitTime)  //最大等待连接的线程阻塞时间 毫秒
+        builder = builder.maxWaitTime(maxWaitTime)  //最大等待连接的线程阻塞时间 毫秒
         .minConnectionsPerHost(minPoolSize) //最小连接数
                 .connectionsPerHost(maxPoolSize) //最大连接数
 //              .threadsAllowedToBlockForConnectionMultiplier(10) //线程队列数，它与connectionsPerHost值相乘的结果就是线程队列最大值
-              .threadsAllowedToBlockForConnectionMultiplier(10) //超过此值乘以connectionsPerHost,将返回异常
+              .threadsAllowedToBlockForConnectionMultiplier(blockQueueNum) //超过此值乘以connectionsPerHost,将返回异常
 //              .socketKeepAlive(false) //设置keepalive,默认值是false
                 .connectTimeout(connectTimeout) //连接超时时间
                 .socketTimeout(socketTimeout); //socket超时
@@ -452,7 +458,6 @@ class DbService {
             return ret
 
         } else if (name.startsWith("aggregate")) { //使用字符串来聚合
-            println name
             def coll = innerGetColl(name, 9)
             def pipelineList = []
             args[0].split("@@@").each {
