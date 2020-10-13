@@ -97,7 +97,7 @@ class DbService {
             maxPoolSize = minPoolSize;
         }
 
-        int maxWaitTime = 1000;
+        int maxWaitTime = 10000;
         if(params.maxWaitTime) {
             maxWaitTime = params.maxWaitTime.toString().toInteger();
         }
@@ -714,6 +714,7 @@ class DbService {
             }
         }
     }
+
 
 
 }
