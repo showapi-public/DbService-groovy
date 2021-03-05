@@ -716,5 +716,8 @@ class DbService {
     }
 
 
+    public static void main(String[] args) {
+
+    }
 
 }
