@@ -316,7 +316,7 @@ class DbService {
             def query = [:]
             def extPara = null
             if(args){
-                query = args[0]==null?[:]:mapToBson(args[0])
+                query = args[0]==null?[:]:mapToBson(args[0].clone())
                 extPara = args.size() == 2 ? args[1] : null
             }
 
@@ -364,7 +364,7 @@ class DbService {
             def query = [:]
             def extPara = null
             if(args){
-                query = args[0]==null?[:]:mapToBson(args[0])
+                query = args[0]==null?[:]:mapToBson(args[0].clone())
                 extPara = args.size() == 2 ? args[1] : null
             }
 
@@ -379,7 +379,7 @@ class DbService {
             def coll = innerGetColl(name, 6)
             def query = [:]
             if(args){
-                query = args[0]==null?[:]:args[0].asType(Map.class)
+                query = args[0]==null?[:]:args[0].asType(Map.class).clone()
             }
             def page = 1
             def maxResult = 20;
@@ -434,7 +434,11 @@ class DbService {
             def callbackWrap = { item, list ->
                 args[1](item)
             }
-            def ret = innerSearchRecord(coll, args[0]?.asType(Map.class), 1, 100000000, false, callbackWrap)
+            def query = [:]
+            if(args[0]){
+                query = args[0]?.asType(Map.class).clone();
+            }
+            def ret = innerSearchRecord(coll, query, 1, 100000000, false, callbackWrap)
 
             return ret
         } else if (name.startsWith("dropTable")) {
